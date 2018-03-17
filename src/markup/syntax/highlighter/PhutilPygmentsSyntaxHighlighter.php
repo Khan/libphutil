@@ -21,15 +21,14 @@ final class PhutilPygmentsSyntaxHighlighter extends Phobject {
 
     if ($language) {
       $language = $this->getPygmentsLexerNameFromLanguageName($language);
-      $future = new ExecFuture(
-        'pygmentize -O encoding=utf-8 -O stripnl=False -f html -l %s',
-        $language);
       $scrub = false;
       if ($language == 'php' && strpos($source, '<?') === false) {
         $source = "<?php\n".$source;
         $scrub = true;
       }
-      $future->write($source);
+      $future = new HTTPFuture(
+        'http://localhost:7878/pygmentize?lang='.urlencode($language),
+        $source);
       return new PhutilDefaultSyntaxHighlighterEnginePygmentsFuture(
         $future,
         $source,
