@@ -27,8 +27,7 @@ final class PhutilDefaultSyntaxHighlighterEnginePygmentsFuture
       return phutil_safe_html($body);
     }
 
-    $error = $status->getErrorCodeDescription($error->getStatusCode());
-    throw new PhutilSyntaxHighlighterException($body, $error);
+    throw new PhutilSyntaxHighlighterException($body, $error->getStatusCode());
   }
 
 }
