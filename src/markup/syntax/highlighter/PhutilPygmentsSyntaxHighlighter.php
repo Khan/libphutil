@@ -29,6 +29,7 @@ final class PhutilPygmentsSyntaxHighlighter extends Phobject {
       $future = new HTTPFuture(
         'http://localhost:7878/pygmentize?lang='.urlencode($language),
         $source);
+      $future->setMethod("POST");
       return new PhutilDefaultSyntaxHighlighterEnginePygmentsFuture(
         $future,
         $source,
