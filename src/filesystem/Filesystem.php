@@ -677,18 +677,30 @@ final class Filesystem extends Phobject {
    * @param  string    Optional directory prefix.
    * @param  int       Permissions to create the directory with. By default,
    *                   these permissions are very restrictive (0700).
+   * @param  string    Optional root directory. If not provided, the system
+   *                   temporary directory (often "/tmp") will be used.
    * @return string    Path to newly created temporary directory.
    *
    * @task   directory
    */
-  public static function createTemporaryDirectory($prefix = '', $umask = 0700) {
+  public static function createTemporaryDirectory(
+    $prefix = '',
+    $umask = 0700,
+    $root_directory = null) {
     $prefix = preg_replace('/[^A-Z0-9._-]+/i', '', $prefix);
 
-    $tmp = sys_get_temp_dir();
-    if (!$tmp) {
-      throw new FilesystemException(
-        $tmp,
-        pht('Unable to determine system temporary directory.'));
+    if ($root_directory !== null) {
+      $tmp = $root_directory;
+      self::assertExists($tmp);
+      self::assertIsDirectory($tmp);
+      self::assertWritable($tmp);
+    } else {
+      $tmp = sys_get_temp_dir();
+      if (!$tmp) {
+        throw new FilesystemException(
+          $tmp,
+          pht('Unable to determine system temporary directory.'));
+      }
     }
 
     $base = $tmp.DIRECTORY_SEPARATOR.$prefix;
@@ -765,22 +777,36 @@ final class Filesystem extends Phobject {
    * @return list<string>  List of parent paths, including the provided path.
    * @task   directory
    */
-  public static function walkToRoot($path, $root = '/') {
+  public static function walkToRoot($path, $root = null) {
     $path = self::resolvePath($path);
-    $root = self::resolvePath($root);
 
     if (is_link($path)) {
       $path = realpath($path);
     }
-    if (is_link($root)) {
-      $root = realpath($root);
-    }
 
-    // NOTE: We don't use `isDescendant()` here because we don't want to reject
-    // paths which don't exist on disk.
-    $root_list = new FileList(array($root));
-    if (!$root_list->contains($path)) {
-      return array();
+    // NOTE: On Windows, paths start like "C:\", so "/" does not contain
+    // every other path. We could possibly special case "/" to have the same
+    // meaning on Windows that it does on Linux, but just special case the
+    // common case for now. See PHI817.
+    if ($root !== null) {
+      $root = self::resolvePath($root);
+
+      if (is_link($root)) {
+        $root = realpath($root);
+      }
+
+      // NOTE: We don't use `isDescendant()` here because we don't want to
+      // reject paths which don't exist on disk.
+      $root_list = new FileList(array($root));
+      if (!$root_list->contains($path)) {
+        return array();
+      }
+    } else {
+      if (phutil_is_windows()) {
+        $root = null;
+      } else {
+        $root = '/';
+      }
     }
 
     $walk = array();
